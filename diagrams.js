@@ -579,27 +579,31 @@ function CanvasPanZoomLayer() {
   this.maxZoom = 16.0;
 }
 
-CanvasPanZoomLayer.prototype.initialize = function(canvasController) {
+// Zoom is optional.
+CanvasPanZoomLayer.prototype.initialize = function(canvasController, canZoom) {
   let self = this;
   this.canvasController = canvasController;
+  this.canZoom = canZoom;
 
-  canvasController.canvas.addEventListener('mousewheel', function(e) {
-    let pan = self.pan, zoom = self.zoom,
-        center = { x: e.offsetX, y: e.offsetY },
-        dZoom = 1.0 + e.wheelDelta / 8192,
-        newZoom = zoom * dZoom;
-    newZoom = Math.max(self.minZoom, Math.min(self.maxZoom, newZoom));
-    dZoom = newZoom / zoom;
-
-    self.zoom = zoom * dZoom;
-    self.pan = {
-      x: (pan.x - center.x) * dZoom + center.x,
-      y: (pan.y - center.y) * dZoom + center.y,
-    }
-    self.setTransform_();
-    canvasController.draw();
-    e.preventDefault();
-  });
+  if (canZoom) {
+    canvasController.canvas.addEventListener('mousewheel', function(e) {
+      let pan = self.pan, zoom = self.zoom,
+          center = { x: e.offsetX, y: e.offsetY },
+          dZoom = 1.0 + e.wheelDelta / 8192,
+          newZoom = zoom * dZoom;
+      newZoom = Math.max(self.minZoom, Math.min(self.maxZoom, newZoom));
+      dZoom = newZoom / zoom;
+  
+      self.zoom = zoom * dZoom;
+      self.pan = {
+        x: (pan.x - center.x) * dZoom + center.x,
+        y: (pan.y - center.y) * dZoom + center.y,
+      }
+      self.setTransform_();
+      canvasController.draw();
+      e.preventDefault();
+    });
+  }
 }
 
 CanvasPanZoomLayer.prototype.setTransform_ = function(p) {
