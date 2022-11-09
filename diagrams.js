@@ -332,7 +332,8 @@ const diagrams = (function() {
   }
   
   PropertyGridController.prototype.register = function(type, properties) {
-    const table = document.createElement('table'),
+    const self = this,
+          table = document.createElement('table'),
           info = {
             properties: properties,
             table: table,
@@ -358,7 +359,7 @@ const diagrams = (function() {
           editingElement = document.createElement("input");
           editingElement.setAttribute("type", "text");
           editingElement.addEventListener('change', function(event) {
-            propertyInfo.handler(propertyInfo, editingElement.value);
+            propertyInfo.setter(propertyInfo, self.item, editingElement.value);
           });
           break;
         }
@@ -374,18 +375,25 @@ const diagrams = (function() {
   PropertyGridController.prototype.show = function(type, item) {
     const active = this.active,
           entry = this.types.get(type);
-    if (entry !== active) {
-      if (active) {
-        const table = active.table;
-        table.style.display = 'none';
-        table.style.visibility = 'hidden';
-      }
-      if (entry) {
-        const table = entry.table;
-        table.style.display = 'block';
-        table.style.visibility = 'visible';
-      }
-      this.active = entry;
+    // Hide the previous table if it's different.
+    if (entry !== active && active) {
+      const table = active.table;
+      table.style.display = 'none';
+      table.style.visibility = 'hidden';
+    }
+    this.active = entry;
+    if (entry) {
+      const table = entry.table;
+      // Initialize editing control values.
+      entry.properties.forEach(function(propertyInfo, index) {
+        const row = table.rows[index],
+              cell = row.cells[1],
+              editingElement = cell.children[0];
+        editingElement.value = propertyInfo.getter(propertyInfo, item);
+      });
+      this.item = item;
+      table.style.display = 'block';
+      table.style.visibility = 'visible';
     }
   }
   
