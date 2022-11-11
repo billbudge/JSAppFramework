@@ -480,6 +480,7 @@ const diagrams = (function() {
         return false;
       // Layers that return true from onClick must implement onBeginDrag, etc.
       self.clickOwner = layer;
+      self.canvas.setPointerCapture(e.pointerId);
       return true;
     });
     this.cancelHover_();
