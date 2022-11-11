@@ -471,7 +471,7 @@ const diagrams = (function() {
     }
   }
   
-  CanvasController.prototype.onMouseDown = function(e) {
+  CanvasController.prototype.onPointerDown = function(e) {
     let self = this,
         mouse = this.mouse = this.click = getPointerPosition(e, this.canvas),
         alt = (e.button !== 0);
@@ -487,7 +487,7 @@ const diagrams = (function() {
     return this.clickOwner;
   }
   
-  CanvasController.prototype.onMouseMove = function(e) {
+  CanvasController.prototype.onPointerMove = function(e) {
     let mouse = this.mouse = getPointerPosition(e, this.canvas),
         click = this.click;
     if (this.clickOwner) {
@@ -511,7 +511,7 @@ const diagrams = (function() {
     return this.clickOwner;
   }
   
-  CanvasController.prototype.onMouseUp = function(e) {
+  CanvasController.prototype.onPointerUp = function(e) {
     let mouse = this.mouse = getPointerPosition(e, this.canvas);
     if (this.isDragging) {
       this.isDragging = false;
@@ -523,7 +523,7 @@ const diagrams = (function() {
     return false;
   }
   
-  CanvasController.prototype.onMouseOut = function(e) {
+  CanvasController.prototype.onPointerOut = function(e) {
     // TODO
   }
   
