@@ -612,18 +612,25 @@ const diagrams = (function() {
   }
   
   CanvasController.prototype.draw = function() {
-    let canvas = this.canvas, ctx = this.ctx,
-        layers = this.layers, length = layers.length,
-        t = this.transform_;
-    function drawFrame() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const self = this,
+          canvas = this.canvas, ctx = this.ctx,
+          layers = this.layers, length = layers.length,
+          t = this.transform_;
+    function draw() {
+      const size = self.getSize(canvas, ctx);
+      ctx.clearRect(0, 0, size.width, size.height);
+      ctx.strokeStyle = self.theme.strokeColor;
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([6,3]);
+      ctx.strokeRect(0, 0, size.width, size.height);
+      ctx.setLineDash([]);
       for (let i = length - 1; i >= 0; i--) {
         let layer = layers[i];
         if (layer.draw)
           layer.draw();
       }
     }
-    window.requestAnimationFrame(drawFrame);
+    window.requestAnimationFrame(draw);
   }
   
   CanvasController.prototype.getSize = function() {
