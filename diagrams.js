@@ -290,16 +290,24 @@ const diagrams = (function() {
     }
   }
   
-  function resizeCanvas(canvas, ctx, width, height) {
-    let devicePixelRatio = window.devicePixelRatio || 1,
-        backingStoreRatio = ctx.webkitBackingStorePixelRatio ||
-                            ctx.mozBackingStorePixelRatio ||
-                            ctx.msBackingStorePixelRatio ||
-                            ctx.oBackingStorePixelRatio ||
-                            ctx.backingStorePixelRatio || 1,
+  function getCanvasScaleFactor(ctx) {
+    const devicePixelRatio = window.devicePixelRatio || 1,
+          backingStoreRatio = ctx.webkitBackingStorePixelRatio ||
+                              ctx.mozBackingStorePixelRatio ||
+                              ctx.msBackingStorePixelRatio ||
+                              ctx.oBackingStorePixelRatio ||
+                              ctx.backingStorePixelRatio || 1;
   
-        contextScale = devicePixelRatio / backingStoreRatio;
+        return devicePixelRatio / backingStoreRatio;
+  }
+
+  function getCanvasSize(canvas, ctx) {
+    const contextScale = getCanvasScaleFactor(ctx);
+    return { width: canvas.width / contextScale, height: canvas.height / contextScale };
+  }
   
+  function setCanvasSize(canvas, ctx, width, height) {
+    const contextScale = getCanvasScaleFactor(ctx);
     canvas.width  = width * contextScale;
     canvas.height = height * contextScale;
     canvas.style.width = width + 'px';
@@ -618,8 +626,12 @@ const diagrams = (function() {
     window.requestAnimationFrame(drawFrame);
   }
   
-  CanvasController.prototype.resize = function(width, height) {
-    diagrams.resizeCanvas(this.canvas, this.ctx, width, height);
+  CanvasController.prototype.getSize = function() {
+    return getCanvasSize(this.canvas, this.ctx);
+  }
+  
+CanvasController.prototype.setSize = function(width, height) {
+    diagrams.setCanvasSize(this.canvas, this.ctx, width, height);
     this.draw();
   }
   
@@ -768,7 +780,8 @@ const diagrams = (function() {
     hitTestLine: hitTestLine,
     hitTestBezier: hitTestBezier,
     hitTestConvexHull: hitTestConvexHull,
-    resizeCanvas: resizeCanvas,
+    getCanvasSize: getCanvasSize,
+    setCanvasSize: setCanvasSize,
     measureNameValuePairs: measureNameValuePairs,
   
     CanvasController: CanvasController,
