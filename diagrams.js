@@ -364,12 +364,25 @@ const diagrams = (function() {
       let editingElement;
       switch (type) {
         case 'text': {
-          editingElement = document.createElement("input");
-          editingElement.setAttribute("type", "text");
+          editingElement = document.createElement('input');
+          editingElement.setAttribute('type', 'text');
           editingElement.addEventListener('change', function(event) {
             propertyInfo.setter(propertyInfo, self.item, editingElement.value);
           });
           break;
+        }
+        case 'enum': {
+          editingElement = document.createElement('select');
+          const values = propertyInfo.values.split(',');
+          for (let value of values) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.text = value;
+            editingElement.add(option);
+          }
+          editingElement.addEventListener('change', function(event) {
+            propertyInfo.setter(propertyInfo, self.item, editingElement.value);
+          });
         }
       }
       assert(editingElement);
