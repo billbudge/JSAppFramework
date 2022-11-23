@@ -161,15 +161,14 @@ const diagrams = (function() {
   // p1, p2 have x, y, nx, ny.
   function getEdgeBezier(p1, p2) {
     let dx = p1.x - p2.x, dy = p1.y - p2.y,
-        // baseLength = 64,// Math.sqrt(dx * dx + dy * dy),
+        // baseLength = Math.sqrt(dx * dx + dy * dy),
         nx1 = p1.nx || 0, ny1 = p1.ny || 0, nx2 = p2.nx || 0, ny2 = p2.ny || 0,
         dot = nx1 * -nx2 + ny1 * -ny2,
         scale = (2 - dot) * 32,
-        // scale = Math.min(Math.sqrt(dx * dx + dy * dy), 64) * 0.5,
+        // scale = Math.min(baseLength, 64) * 0.5,
         // scale = (Math.abs(p2.x - p1.x) + Math.abs(p2.y - p1.y)) * 0.166,
         c1 = { x: p1.x + scale * nx1, y: p1.y + scale * ny1 },
         c2 = { x: p2.x + scale * nx2, y: p2.y + scale * ny2 };
-        console.log(nx1 * -nx2 + ny1 * -ny2);
     return [p1, c1, c2, p2];
   }
   
