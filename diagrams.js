@@ -350,7 +350,7 @@ const diagrams = (function() {
             table: table,
           };
     // TODO better styling
-    table.style ='position:absolute; table-layout: fixed; top:300px; left: 0;   padding: 0; margin: 0;'
+    table.style ='position:fixed; table-layout: fixed; top:300px; left: 0;   padding: 0; margin: 0;'
                  'border-collapse: collapse; margin: 25px 0; font-size: 0.9em; font-family: sans-serif; '
                  'box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);';
     table.style['background-color'] = this.theme.altBgColor;
@@ -648,14 +648,18 @@ const diagrams = (function() {
     }
     window.requestAnimationFrame(draw);
   }
-  
+
   CanvasController.prototype.getSize = function() {
     return getCanvasSize(this.canvas, this.ctx);
   }
   
-CanvasController.prototype.setSize = function(width, height) {
+  CanvasController.prototype.setSize = function(width, height) {
     diagrams.setCanvasSize(this.canvas, this.ctx, width, height);
     this.draw();
+  }
+  
+  CanvasController.prototype.getClientRect = function() {
+    return this.canvas.getBoundingClientRect();
   }
   
   //------------------------------------------------------------------------------
