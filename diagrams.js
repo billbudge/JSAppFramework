@@ -335,152 +335,286 @@ const diagrams = (function() {
   
   //------------------------------------------------------------------------------
   
-  function PropertyGridController(container, theme) {
-    this.container = container;
-    this.theme = theme || diagrams.theme.create();
-    this.types = new Map();
-    this.active = undefined;
-  }
-  
-  PropertyGridController.prototype.register = function(type, properties) {
-    const self = this,
-          table = document.createElement('table'),
-          info = {
-            properties: properties,
-            table: table,
-          };
-    // TODO better styling
-    table.style ='position:fixed; table-layout: fixed; top:300px; left: 0;   padding: 0; margin: 0;'
-                 'border-collapse: collapse; margin: 25px 0; font-size: 0.9em; font-family: sans-serif; '
-                 'box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);';
-    table.style['background-color'] = this.theme.altBgColor;
-    table.style.display = 'none';
-    table.style.visibility = 'hidden';
-  
-    properties.forEach(function(propertyInfo, index) {
-      const label = propertyInfo.label,
-            labelElement = document.createTextNode(label),
-            type = propertyInfo.type,
-            row = table.insertRow(index),
-            cell1 = row.insertCell(),
-            cell2 = row.insertCell();
-      let editingElement;
-      switch (type) {
-        case 'text': {
-          editingElement = document.createElement('input');
-          editingElement.setAttribute('type', 'text');
-          editingElement.addEventListener('change', function(event) {
-            propertyInfo.setter(propertyInfo, self.item, editingElement.value);
-          });
-          break;
-        }
-        case 'enum': {
-          editingElement = document.createElement('select');
-          const values = propertyInfo.values.split(',');
-          for (let value of values) {
-            const option = document.createElement('option');
-            option.value = value;
-            option.text = value;
-            editingElement.add(option);
-          }
-          editingElement.addEventListener('change', function(event) {
-            propertyInfo.setter(propertyInfo, self.item, editingElement.value);
-          });
-        }
-      }
-      assert(editingElement);
-      cell1.appendChild(labelElement);
-      cell2.appendChild(editingElement);
-    });
-    this.types.set(type, info);
-    this.container.appendChild(table);
-  }
-  
-  PropertyGridController.prototype.show = function(type, item) {
-    const active = this.active,
-          entry = this.types.get(type);
-    // Hide the previous table if it's different.
-    if (entry !== active && active) {
-      const table = active.table;
+  class PropertyGridController {
+    constructor(container, theme) {
+      this.container = container;
+      this.theme = theme || diagrams.theme.create();
+      this.types = new Map();
+      this.active = undefined;
+    }
+    register(type, properties) {
+      const self = this, table = document.createElement('table'), info = {
+        properties: properties,
+        table: table,
+      };
+      // TODO better styling
+      table.style = 'position:fixed; table-layout: fixed; top:300px; left: 0;   padding: 0; margin: 0;';
+      'border-collapse: collapse; margin: 25px 0; font-size: 0.9em; font-family: sans-serif; ';
+      'box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);';
+      table.style['background-color'] = this.theme.altBgColor;
       table.style.display = 'none';
       table.style.visibility = 'hidden';
-    }
-    this.active = entry;
-    if (entry) {
-      const table = entry.table;
-      // Initialize editing control values.
-      entry.properties.forEach(function(propertyInfo, index) {
-        const row = table.rows[index],
-              cell = row.cells[1],
-              editingElement = cell.children[0];
-        editingElement.value = propertyInfo.getter(propertyInfo, item);
+
+      properties.forEach(function (propertyInfo, index) {
+        const label = propertyInfo.label, labelElement = document.createTextNode(label), type = propertyInfo.type, row = table.insertRow(index), cell1 = row.insertCell(), cell2 = row.insertCell();
+        let editingElement;
+        switch (type) {
+          case 'text': {
+            editingElement = document.createElement('input');
+            editingElement.setAttribute('type', 'text');
+            editingElement.addEventListener('change', function (event) {
+              propertyInfo.setter(propertyInfo, self.item, editingElement.value);
+            });
+            break;
+          }
+          case 'enum': {
+            editingElement = document.createElement('select');
+            const values = propertyInfo.values.split(',');
+            for (let value of values) {
+              const option = document.createElement('option');
+              option.value = value;
+              option.text = value;
+              editingElement.add(option);
+            }
+            editingElement.addEventListener('change', function (event) {
+              propertyInfo.setter(propertyInfo, self.item, editingElement.value);
+            });
+          }
+        }
+        assert(editingElement);
+        cell1.appendChild(labelElement);
+        cell2.appendChild(editingElement);
       });
-      this.item = item;
-      table.style.display = 'block';
-      table.style.visibility = 'visible';
+      this.types.set(type, info);
+      this.container.appendChild(table);
+    }
+    show(type, item) {
+      const active = this.active, entry = this.types.get(type);
+      // Hide the previous table if it's different.
+      if (entry !== active && active) {
+        const table = active.table;
+        table.style.display = 'none';
+        table.style.visibility = 'hidden';
+      }
+      this.active = entry;
+      if (entry) {
+        const table = entry.table;
+        // Initialize editing control values.
+        entry.properties.forEach(function (propertyInfo, index) {
+          const row = table.rows[index], cell = row.cells[1], editingElement = cell.children[0];
+          editingElement.value = propertyInfo.getter(propertyInfo, item);
+        });
+        this.item = item;
+        table.style.display = 'block';
+        table.style.visibility = 'visible';
+      }
     }
   }
-  
+
   //------------------------------------------------------------------------------
   
-  function CanvasController(canvas, ctx, theme) {
-    this.canvas = canvas;
-    this.ctx = ctx || canvas.getContext('2d');
-    this.theme = theme || diagrams.theme.create();
-  
-    this.dragThreshold = 4;
-    this.hoverThreshold = 4;
-    this.hoverTimeout = 500;  // milliseconds
-    this.mouse = { x: 0, y: 0 };
-    this.dragOffset = { x: 0, y: 0 };
-    this.translation = { x: 0, y: 0 };
-    this.scale = { x: 1.0, y: 1.0 };
-    this.transform = [1, 0, 0, 1, 0, 0];
-    this.inverseTransform = [1, 0, 0, 1, 0, 0];
-  }
-  
-  CanvasController.prototype.configure = function(layers) {
-    let controller = this, length = layers.length;
-    this.layers = layers.slice(0);
-    for (let i = 0; i < length; i++) {
-      let layer = layers[i];
-      if (layer.initialize)
-        layer.initialize(controller, i);
+  class CanvasController {
+    constructor(canvas, theme) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.theme = theme || diagrams.theme.createDefault();
+
+      this.dragThreshold = 4;
+      this.hoverThreshold = 4;
+      this.hoverTimeout = 500; // milliseconds
+      this.mouse = { x: 0, y: 0 };
+      this.dragOffset = { x: 0, y: 0 };
+      this.translation = { x: 0, y: 0 };
+      this.scale = { x: 1.0, y: 1.0 };
+      this.transform = [1, 0, 0, 1, 0, 0];
+      this.inverseTransform = [1, 0, 0, 1, 0, 0];
     }
-    // Layers are presented in draw order, but most loops are event-order, so
-    // reverse the array here.
-    this.layers.reverse();
-    this.draw();
-  }
-  
-  CanvasController.prototype.setTransform = function(translation, scale) {
-    let tx = 0, ty = 0, sx = 1, sy = 1, sin = 0, cos = 1;
-    if (translation) {
-      tx = translation.x;
-      ty = translation.y;
-      this.translation = translation;
+    configure(layers) {
+      layers = layers.slice(0);
+      this.layers = layers;
+      const length = layers.length;
+      for (let i = 0; i < length; i++) {
+        const layer = layers[i];
+        if (layer.initialize)
+          layer.initialize(this, i);
+      }
+      // Layers are presented in draw order, but most loops are hit test order, so
+      // reverse the array here.
+      layers.reverse();
     }
-    if (scale) {
-      sx = scale.x;
-      sy = scale.y;
-      this.scale = scale;
+    setTransform(translation, scale) {
+      let tx = 0, ty = 0, sx = 1, sy = 1, sin = 0, cos = 1;
+      if (translation) {
+        tx = translation.x;
+        ty = translation.y;
+        this.translation = translation;
+      }
+      if (scale) {
+        sx = scale.x;
+        sy = scale.y;
+        this.scale = scale;
+      }
+      this.transform = [sx, 0, 0, sy, tx, ty];
+      let ooSx = 1.0 / sx, ooSy = 1.0 / sy;
+      this.inverseTransform = [ooSx, 0, 0, ooSy, -tx * ooSx, -ty * ooSy];
+
+      this.cancelHover_();
     }
-    this.transform = [sx, 0, 0, sy, tx, ty];
-    let ooSx = 1.0 / sx, ooSy = 1.0 / sy;
-    this.inverseTransform = [ooSx, 0, 0, ooSy, -tx * ooSx, -ty * ooSy];
-  
-    this.cancelHover_();
+    applyTransform() {
+      let t = this.transform;
+      this.ctx.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
+    }
+    viewToCanvas(p) {
+      return geometry.matMulPtNew(p, this.inverseTransform);
+    }
+    onPointerDown(e) {
+      let self = this, mouse = this.mouse = this.click = getPointerPosition(e, this.canvas), alt = (e.button !== 0);
+      this.layers.some(function (layer) {
+        if (!layer.onClick || !layer.onClick(mouse, alt))
+          return false;
+        // Layers that return true from onClick must implement onBeginDrag, etc.
+        self.clickOwner = layer;
+        self.canvas.setPointerCapture(e.pointerId);
+        return true;
+      });
+      this.cancelHover_();
+      this.draw();
+      return this.clickOwner;
+    }
+    onPointerMove(e) {
+      let mouse = this.mouse = getPointerPosition(e, this.canvas), click = this.click;
+      if (this.clickOwner) {
+        let dx = mouse.x - click.x, dy = mouse.y - click.y;
+        if (!this.isDragging) {
+          this.isDragging = Math.abs(dx) >= this.dragThreshold ||
+            Math.abs(dy) >= this.dragThreshold;
+          if (this.isDragging) {
+            this.cancelHover_();
+            this.clickOwner.onBeginDrag(click);
+          }
+        }
+        if (this.isDragging) {
+          this.clickOwner.onDrag(click, mouse);
+          this.draw();
+        }
+      }
+      if (!click)
+        this.startHover_();
+      return this.clickOwner;
+    }
+    onPointerUp(e) {
+      let mouse = this.mouse = getPointerPosition(e, this.canvas);
+      if (this.isDragging) {
+        this.isDragging = false;
+        this.clickOwner.onEndDrag(mouse);
+        this.draw();
+      }
+      this.click = null;
+      this.clickOwner = null;
+      return false;
+    }
+    onPointerOut(e) {
+      // TODO
+    }
+    onDoubleClick(e) {
+      let self = this, mouse = this.mouse = this.click = getPointerPosition(e, this.canvas), alt = (e.button !== 0), handler;
+      this.layers.some(function (layer) {
+        if (!layer.onDoubleClick || !layer.onDoubleClick(mouse, alt))
+          return false;
+        handler = layer;
+        return true;
+      });
+      this.cancelHover_();
+      this.draw();
+      return handler;
+    }
+    onKeyDown(e) {
+      let self = this;
+      this.shiftKeyDown = e.shiftKey;
+      this.cmdKeyDown = e.ctrlKey || e.metaKey;
+      this.layers.some(function (layer) {
+        if (!layer.onKeyDown || !layer.onKeyDown(e))
+          return false;
+        // Layers that return true from onClick must implement onBeginDrag, onDrag,
+        // and onEndDrag.
+        self.keyOwner = layer;
+        self.draw();
+        e.preventDefault();
+        return true;
+      });
+      this.cancelHover_();
+      return this.keyOwner;
+    }
+    onKeyUp(e) {
+      this.shiftKeyDown = e.shiftKey;
+      this.cmdKeyDown = e.ctrlKey || e.metaKey;
+      let keyOwner = this.keyOwner;
+      if (keyOwner) {
+        if (keyOwner.onKeyUp)
+          keyOwner.onKeyUp(e);
+        this.keyOwner = null;
+        return false;
+      }
+    }
+    startHover_() {
+      let self = this;
+      if (this.hovering_)
+        this.cancelHover_();
+      this.hovering_ = window.setTimeout(function () {
+        self.layers.some(function (layer) {
+          if (!layer.onBeginHover || !layer.onBeginHover(self.mouse))
+            return false;
+          // Layers that return true from onBeginHover must implement onEndHover.
+          self.hoverOwner = layer;
+          self.hovering_ = 0;
+          self.draw();
+          return true;
+        });
+      }, this.hoverTimeout);
+    }
+    cancelHover_() {
+      if (this.hovering_) {
+        window.clearTimeout(this.hovering_);
+        this.hovering_ = 0;
+      }
+      if (this.hoverOwner) {
+        this.hoverOwner.onEndHover(this.mouse);
+        this.hoverOwner = null;
+        this.draw();
+      }
+    }
+    draw() {
+      const self = this, canvas = this.canvas, ctx = this.ctx, layers = this.layers, length = layers.length, t = this.transform_;
+      function draw() {
+        const size = self.getSize(canvas, ctx);
+        ctx.clearRect(0, 0, size.width, size.height);
+        ctx.strokeStyle = self.theme.strokeColor;
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(0, 0, size.width, size.height);
+        ctx.setLineDash([]);
+        for (let i = length - 1; i >= 0; i--) {
+          let layer = layers[i];
+          if (layer.draw)
+            layer.draw();
+        }
+      }
+      window.requestAnimationFrame(draw);
+    }
+    getSize() {
+      return getCanvasSize(this.canvas, this.ctx);
+    }
+    setSize(width, height) {
+      diagrams.setCanvasSize(this.canvas, this.ctx, width, height);
+      this.draw();
+    }
+    getClientRect() {
+      return this.canvas.getBoundingClientRect();
+    }
   }
-  
-  CanvasController.prototype.applyTransform = function() {
-    let t = this.transform;
-    this.ctx.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
-  }
-  
-  CanvasController.prototype.viewToCanvas = function(p) {
-    return geometry.matMulPtNew(p, this.inverseTransform);
-  }
-  
+
+
+  // TODO eliminate this global function.
   // TODO make controller less mouse-centric.
   function getPointerPosition(e, canvas) {
     let rect = canvas.getBoundingClientRect();
@@ -494,255 +628,62 @@ const diagrams = (function() {
       }
     }
   }
+
+  //------------------------------------------------------------------------------
   
-  CanvasController.prototype.onPointerDown = function(e) {
-    let self = this,
-        mouse = this.mouse = this.click = getPointerPosition(e, this.canvas),
-        alt = (e.button !== 0);
-    this.layers.some(function(layer) {
-      if (!layer.onClick || !layer.onClick(mouse, alt))
-        return false;
-      // Layers that return true from onClick must implement onBeginDrag, etc.
-      self.clickOwner = layer;
-      self.canvas.setPointerCapture(e.pointerId);
-      return true;
-    });
-    this.cancelHover_();
-    this.draw();
-    return this.clickOwner;
-  }
-  
-  CanvasController.prototype.onPointerMove = function(e) {
-    let mouse = this.mouse = getPointerPosition(e, this.canvas),
-        click = this.click;
-    if (this.clickOwner) {
-      let dx = mouse.x - click.x,
-          dy = mouse.y - click.y;
-      if (!this.isDragging) {
-        this.isDragging = Math.abs(dx) >= this.dragThreshold ||
-                          Math.abs(dy) >= this.dragThreshold;
-        if (this.isDragging) {
-          this.cancelHover_();
-          this.clickOwner.onBeginDrag(click);
-        }
-      }
-      if (this.isDragging) {
-        this.clickOwner.onDrag(click, mouse);
-        this.draw();
+  class CanvasPanZoomLayer {
+    constructor(canZoom) {
+      this.pan = { x: 0, y: 0 };
+      this.canZoom = canZoom;
+      this.zoom = 1.0;
+      this.minZoom = 0.50;
+      this.maxZoom = 16.0;
+    }
+    // Zoom is optional.
+    initialize(canvasController) {
+      let self = this;
+      this.canvasController = canvasController;
+
+      if (this.canZoom) {
+        canvasController.canvas.addEventListener('mousewheel', function (e) {
+          let pan = self.pan, zoom = self.zoom, center = { x: e.offsetX, y: e.offsetY }, dZoom = 1.0 + e.wheelDelta / 8192, newZoom = zoom * dZoom;
+          newZoom = Math.max(self.minZoom, Math.min(self.maxZoom, newZoom));
+          dZoom = newZoom / zoom;
+
+          self.zoom = zoom * dZoom;
+          self.pan = {
+            x: (pan.x - center.x) * dZoom + center.x,
+            y: (pan.y - center.y) * dZoom + center.y,
+          };
+          self.setTransform_();
+          canvasController.draw();
+          e.preventDefault();
+        });
       }
     }
-    if (!click)
-      this.startHover_();
-    return this.clickOwner;
-  }
-  
-  CanvasController.prototype.onPointerUp = function(e) {
-    let mouse = this.mouse = getPointerPosition(e, this.canvas);
-    if (this.isDragging) {
-      this.isDragging = false;
-      this.clickOwner.onEndDrag(mouse);
-      this.draw();
+    setTransform_(p) {
+      let pan = this.pan, zoom = this.zoom;
+      this.canvasController.setTransform(pan, { x: zoom, y: zoom });
     }
-    this.click = null;
-    this.clickOwner = null;
-    return false;
-  }
-  
-  CanvasController.prototype.onPointerOut = function(e) {
-    // TODO
-  }
-  
-  CanvasController.prototype.onDoubleClick = function(e) {
-    let self = this,
-        mouse = this.mouse = this.click = getPointerPosition(e, this.canvas),
-        alt = (e.button !== 0),
-        handler;
-    this.layers.some(function(layer) {
-      if (!layer.onDoubleClick || !layer.onDoubleClick(mouse, alt))
-        return false;
-      handler = layer;
+    onClick(p) {
+      // Always capture the mouse click.
       return true;
-    });
-    this.cancelHover_();
-    this.draw();
-    return handler;
-  }
-  
-  CanvasController.prototype.onKeyDown = function(e) {
-    let self = this;
-    this.shiftKeyDown = e.shiftKey;
-    this.cmdKeyDown = e.ctrlKey || e.metaKey;
-    this.layers.some(function(layer) {
-      if (!layer.onKeyDown || !layer.onKeyDown(e))
-        return false;
-      // Layers that return true from onClick must implement onBeginDrag, onDrag,
-      // and onEndDrag.
-      self.keyOwner = layer;
-      self.draw();
-      e.preventDefault();
-      return true;
-    });
-    this.cancelHover_();
-    return this.keyOwner;
-  }
-  
-  CanvasController.prototype.onKeyUp = function(e) {
-    this.shiftKeyDown = e.shiftKey;
-    this.cmdKeyDown = e.ctrlKey || e.metaKey;
-    let keyOwner = this.keyOwner;
-    if (keyOwner) {
-      if (keyOwner.onKeyUp)
-        keyOwner.onKeyUp(e);
-      this.keyOwner = null;
-      return false;
     }
-  }
-  
-  CanvasController.prototype.startHover_ = function() {
-    let self = this;
-    if (this.hovering_)
-      this.cancelHover_();
-    this.hovering_ = window.setTimeout(function() {
-      self.layers.some(function(layer) {
-        if (!layer.onBeginHover || !layer.onBeginHover(self.mouse))
-          return false;
-        // Layers that return true from onBeginHover must implement onEndHover.
-        self.hoverOwner = layer;
-        self.hovering_ = 0;
-        self.draw();
-        return true;
-      });
-    }, this.hoverTimeout);
-  }
-  
-  CanvasController.prototype.cancelHover_ = function() {
-    if (this.hovering_) {
-      window.clearTimeout(this.hovering_);
-      this.hovering_ = 0;
+    onBeginDrag(p0) {
+      this.pan0 = this.pan;
     }
-    if (this.hoverOwner) {
-      this.hoverOwner.onEndHover(this.mouse);
-      this.hoverOwner = null;
-      this.draw();
+    onDrag(p0, p) {
+      let dx = p.x - p0.x, dy = p.y - p0.y, t0 = this.pan0;
+      this.pan = { x: t0.x + dx, y: t0.y + dy };
+      this.setTransform_();
     }
-  }
-  
-  CanvasController.prototype.draw = function() {
-    const self = this,
-          canvas = this.canvas, ctx = this.ctx,
-          layers = this.layers, length = layers.length,
-          t = this.transform_;
-    function draw() {
-      const size = self.getSize(canvas, ctx);
-      ctx.clearRect(0, 0, size.width, size.height);
-      ctx.strokeStyle = self.theme.strokeColor;
-      ctx.lineWidth = 0.5;
-      ctx.setLineDash([6,3]);
-      ctx.strokeRect(0, 0, size.width, size.height);
-      ctx.setLineDash([]);
-      for (let i = length - 1; i >= 0; i--) {
-        let layer = layers[i];
-        if (layer.draw)
-          layer.draw();
-      }
+    onEndDrag(p) {
+      this.translation0 = null;
     }
-    window.requestAnimationFrame(draw);
   }
 
-  CanvasController.prototype.getSize = function() {
-    return getCanvasSize(this.canvas, this.ctx);
-  }
-  
-  CanvasController.prototype.setSize = function(width, height) {
-    diagrams.setCanvasSize(this.canvas, this.ctx, width, height);
-    this.draw();
-  }
-  
-  CanvasController.prototype.getClientRect = function() {
-    return this.canvas.getBoundingClientRect();
-  }
-  
   //------------------------------------------------------------------------------
-  
-  function CanvasPanZoomLayer() {
-    this.pan = { x: 0, y: 0 };
-    this.zoom = 1.0;
-    this.minZoom = 0.50;
-    this.maxZoom = 16.0;
-  }
-  
-  // Zoom is optional.
-  CanvasPanZoomLayer.prototype.initialize = function(canvasController, canZoom) {
-    let self = this;
-    this.canvasController = canvasController;
-    this.canZoom = canZoom;
-  
-    if (canZoom) {
-      canvasController.canvas.addEventListener('mousewheel', function(e) {
-        let pan = self.pan, zoom = self.zoom,
-            center = { x: e.offsetX, y: e.offsetY },
-            dZoom = 1.0 + e.wheelDelta / 8192,
-            newZoom = zoom * dZoom;
-        newZoom = Math.max(self.minZoom, Math.min(self.maxZoom, newZoom));
-        dZoom = newZoom / zoom;
     
-        self.zoom = zoom * dZoom;
-        self.pan = {
-          x: (pan.x - center.x) * dZoom + center.x,
-          y: (pan.y - center.y) * dZoom + center.y,
-        }
-        self.setTransform_();
-        canvasController.draw();
-        e.preventDefault();
-      });
-    }
-  }
-  
-  CanvasPanZoomLayer.prototype.setTransform_ = function(p) {
-    let pan = this.pan, zoom = this.zoom;
-    this.canvasController.setTransform(pan, { x: zoom, y: zoom });
-  }
-  
-  CanvasPanZoomLayer.prototype.onClick = function(p) {
-    // Always capture the mouse click.
-    return true;
-  }
-  
-  CanvasPanZoomLayer.prototype.onBeginDrag = function(p0) {
-    this.pan0 = this.pan;
-  }
-  
-  CanvasPanZoomLayer.prototype.onDrag = function(p0, p) {
-    let dx = p.x - p0.x, dy = p.y - p0.y,
-        t0 = this.pan0;
-    this.pan = { x: t0.x + dx, y: t0.y + dy };
-    this.setTransform_();
-  }
-  
-  CanvasPanZoomLayer.prototype.onEndDrag = function(p) {
-    this.translation0 = null;
-  }
-  
-  //------------------------------------------------------------------------------
-  
-  function CanvasMultiselectLayer(model) {
-    this.model = model;
-  }
-  
-  CanvasMultiselectLayer.prototype.initialize = function(canvasController) {
-    this.ctx = canvasController.ctx;
-  }
-  
-  CanvasMultiselectLayer.prototype.draw = function() {
-    let ctx = this.ctx;
-    ctx.save();
-    ctx.strokeStyle = 'red';
-    ctx.strokeRect(0, 0, 32, 32);
-    ctx.restore();
-  }
-  
-  //------------------------------------------------------------------------------
-  
   let theme = (function() {
     function createDefault() {
       return {
@@ -813,12 +754,10 @@ const diagrams = (function() {
   
     CanvasController: CanvasController,
     CanvasPanZoomLayer: CanvasPanZoomLayer,
-    CanvasMultiselectLayer: CanvasMultiselectLayer,
     PropertyGridController: PropertyGridController,
   
     theme: theme,
   }
   
   })();
-  
   
