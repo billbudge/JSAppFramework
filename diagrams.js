@@ -468,7 +468,7 @@ const diagrams = (function() {
       return geometry.matMulPtNew(p, this.inverseTransform);
     }
     onPointerDown(e) {
-      let self = this, mouse = this.mouse = this.click = getPointerPosition(e, this.canvas), alt = (e.button !== 0);
+      let self = this, mouse = this.mouse = this.click = this.getPointerPosition(e), alt = (e.button !== 0);
       this.layers.some(function (layer) {
         if (!layer.onClick || !layer.onClick(mouse, alt))
           return false;
@@ -482,7 +482,7 @@ const diagrams = (function() {
       return this.clickOwner;
     }
     onPointerMove(e) {
-      let mouse = this.mouse = getPointerPosition(e, this.canvas), click = this.click;
+      let mouse = this.mouse = this.getPointerPosition(e), click = this.click;
       if (this.clickOwner) {
         let dx = mouse.x - click.x, dy = mouse.y - click.y;
         if (!this.isDragging) {
@@ -503,7 +503,7 @@ const diagrams = (function() {
       return this.clickOwner;
     }
     onPointerUp(e) {
-      let mouse = this.mouse = getPointerPosition(e, this.canvas);
+      let mouse = this.mouse = this.getPointerPosition(e);
       if (this.isDragging) {
         this.isDragging = false;
         this.clickOwner.onEndDrag(mouse);
@@ -517,7 +517,7 @@ const diagrams = (function() {
       // TODO
     }
     onDoubleClick(e) {
-      let self = this, mouse = this.mouse = this.click = getPointerPosition(e, this.canvas), alt = (e.button !== 0), handler;
+      let self = this, mouse = this.mouse = this.click = this.getPointerPosition(e), alt = (e.button !== 0), handler;
       this.layers.some(function (layer) {
         if (!layer.onDoubleClick || !layer.onDoubleClick(mouse, alt))
           return false;
@@ -611,21 +611,9 @@ const diagrams = (function() {
     getClientRect() {
       return this.canvas.getBoundingClientRect();
     }
-  }
-
-
-  // TODO eliminate this global function.
-  // TODO make controller less mouse-centric.
-  function getPointerPosition(e, canvas) {
-    let rect = canvas.getBoundingClientRect();
-    if (e.clientX !== undefined && e.clientY !== undefined) {
+    getPointerPosition(e) {
+      let rect = this.canvas.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    } else {
-      let touches = e.touches;
-      if (touches && touches.length) {
-        let touch = touches[0];
-        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
-      }
     }
   }
 
