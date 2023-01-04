@@ -3,11 +3,11 @@
 
 const diagrams = (function() {
   'use strict';
-  
+
   //------------------------------------------------------------------------------
-  
+
   // Rendering utilities.
-  
+
   function roundRectPath(x, y, width, height, r, ctx) {
     r = Math.min(r, width * 0.5, height * 0.5);
     let right = x + width, bottom = y + height;
@@ -22,7 +22,7 @@ const diagrams = (function() {
     ctx.lineTo(x + r, y);
     ctx.quadraticCurveTo(x, y, x, y + r);
   }
-  
+
   function rectParamToPoint(left, top, width, height, t) {
     let right = left + width, bottom = top + height,
         x0, y0, nx, ny, dx = 0, dy = 0;
@@ -65,7 +65,7 @@ const diagrams = (function() {
              ny: ny
            };
   }
-  
+
   function circleParamToPoint(cx, cy, r, t) {
     let rads = ((t - 0.5) / 4) * 2 * Math.PI,
         nx = Math.cos(rads), ny = Math.sin(rads);
@@ -75,7 +75,7 @@ const diagrams = (function() {
              ny: ny
            };
   }
-  
+
   function roundRectParamToPoint(left, top, width, height, r, t) {
     let right = left + width, bottom = top + height,
         wr = r / width, hr = r / height, omwr = 1 - wr, omhr = 1 - hr,
@@ -109,20 +109,20 @@ const diagrams = (function() {
           return circleParamToPoint(right - r, top + r, r, (tc - omwr) / wr * 0.5 + 3.5);
       }
     }
-  
+
     return rectParamToPoint(left, top, width, height, t);
   }
-  
+
   function circlePointToParam(cx, cy, p) {
     return ((Math.PI - Math.atan2(p.y - cy, cx - p.x)) / (2 * Math.PI) * 4 + 0.5) % 4;
   }
-  
+
   function rectPointToParam(left, top, width, height, p) {
     // translate problem to one with origin at center of rect
     let dx = width / 2, dy = height / 2,
         cx = left + dx, cy = top + dy,
         px = p.x - cx, py = p.y - cy;
-  
+
     // rotate problem into quadrant 0
     // use "PerpDot" product to determine relative orientation
     // (Graphics Gems IV, page 138)
@@ -146,18 +146,18 @@ const diagrams = (function() {
         temp = dx; dx = dy; dy = temp;
       }
     }
-  
+
     let y = dx * py / px;
     result += (y + dy) / (dy * 2);
-  
+
     return result;
   }
-  
+
   function diskPath(x, y, r, ctx) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI, false);
   }
-  
+
   // p1, p2 have x, y, nx, ny.
   function getEdgeBezier(p1, p2, scaleFactor) {
     let dx = p1.x - p2.x, dy = p1.y - p2.y,
@@ -171,7 +171,7 @@ const diagrams = (function() {
         c2 = { x: p2.x + scale * nx2, y: p2.y + scale * ny2 };
     return [p1, c1, c2, p2];
   }
-  
+
   function arrowPath(p, ctx, arrowSize) {
     let cos45 = 0.866, sin45 = 0.500,
         nx = p.nx, ny = p.ny;
@@ -181,7 +181,7 @@ const diagrams = (function() {
     ctx.lineTo(p.x + arrowSize * (nx * cos45 + ny * sin45),
                p.y + arrowSize * (ny * cos45 - nx * sin45));
   }
-  
+
   function lineEdgePath(p1, p2, ctx, arrowSize) {
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
@@ -189,7 +189,7 @@ const diagrams = (function() {
     if (arrowSize)
       arrowPath(p2, ctx, arrowSize);
   }
-  
+
   function bezierEdgePath(bezier, ctx, arrowSize) {
     let p1 = bezier[0], c1 = bezier[1], c2 = bezier[2], p2 = bezier[3];
     ctx.beginPath();
@@ -198,7 +198,7 @@ const diagrams = (function() {
     if (arrowSize)
       arrowPath(p2, ctx, arrowSize);
   }
-  
+
   function inFlagPath(x, y, width, height, indent, ctx) {
     let right = x + width, bottom = y + height;
     ctx.beginPath();
@@ -206,7 +206,7 @@ const diagrams = (function() {
     ctx.lineTo(right, y + height); ctx.lineTo(x, y + height);
     ctx.lineTo(x + indent, y + height / 2); ctx.lineTo(x, y);
   }
-  
+
   function outFlagPath(x, y, width, height, indent, ctx) {
     let right = x + width, bottom = y + height;
     ctx.beginPath();
@@ -214,7 +214,7 @@ const diagrams = (function() {
     ctx.lineTo(right, y + height / 2); ctx.lineTo(right - indent, y + height);
     ctx.lineTo(x, y + height); ctx.lineTo(x, y);
   }
-  
+
   function closedPath(points, ctx) {
     ctx.beginPath();
     let length = points.length, pLast = points[length - 1];
@@ -224,12 +224,12 @@ const diagrams = (function() {
       ctx.lineTo(pi.x, pi.y);
     }
   }
-  
+
   // Check if p is within tolerance of (x, y). Useful for knobbies.
   function hitPoint(x, y, p, tol) {
     return Math.abs(x - p.x) <= tol && Math.abs(y - p.y) <= tol;
   }
-  
+
   function hitTestRect(x, y, width, height, p, tol) {
     let right = x + width, bottom = y + height,
         px = p.x, py = p.y;
@@ -250,7 +250,7 @@ const diagrams = (function() {
       };
     }
   }
-  
+
   function hitTestDisk(x, y, r, p, tol) {
     const dx = x - p.x, dy = y - p.y,
           dSquared = dx * dx + dy * dy,
@@ -260,7 +260,7 @@ const diagrams = (function() {
       return { interior: !border, border: border };
     }
   }
-  
+
   function hitTestLine(p1, p2, p, tol) {
     if (geometry.pointToPointDist(p1, p) < tol) {
       return { p1: true };
@@ -270,7 +270,7 @@ const diagrams = (function() {
       return { edge: true };
     }
   }
-  
+
   function hitTestBezier(bezier, p, tol) {
     const p1 = bezier[0], p2 = bezier[3];
     if (geometry.pointToPointDist(p1, p) < tol) {
@@ -285,14 +285,14 @@ const diagrams = (function() {
       return hit;
     }
   }
-  
+
   function hitTestConvexHull(hull, p, tol) {
     if (geometry.pointInConvexHull(hull, p, tol)) {
       let interior = geometry.pointInConvexHull(hull, p, -tol);
         return { interior: interior, border: !interior };
     }
   }
-  
+
   function getCanvasScaleFactor(ctx) {
     const devicePixelRatio = window.devicePixelRatio || 1,
           backingStoreRatio = ctx.webkitBackingStorePixelRatio ||
@@ -300,7 +300,7 @@ const diagrams = (function() {
                               ctx.msBackingStorePixelRatio ||
                               ctx.oBackingStorePixelRatio ||
                               ctx.backingStorePixelRatio || 1;
-  
+
         return devicePixelRatio / backingStoreRatio;
   }
 
@@ -308,7 +308,7 @@ const diagrams = (function() {
     const contextScale = getCanvasScaleFactor(ctx);
     return { width: canvas.width / contextScale, height: canvas.height / contextScale };
   }
-  
+
   function setCanvasSize(canvas, ctx, width, height) {
     const contextScale = getCanvasScaleFactor(ctx);
     canvas.width  = width * contextScale;
@@ -318,7 +318,7 @@ const diagrams = (function() {
     ctx.resetTransform();
     ctx.scale(contextScale, contextScale);
   }
-  
+
   // Calculates the maximum width of an array of name-value pairs. Names are left
   // justified, values are right justified, and gap is the minimum space between
   // name and value.
@@ -332,9 +332,9 @@ const diagrams = (function() {
     });
     return maxWidth;
   }
-  
+
   //------------------------------------------------------------------------------
-  
+
   class PropertyGridController {
     constructor(container, theme) {
       this.container = container;
@@ -412,36 +412,9 @@ const diagrams = (function() {
   }
 
   //------------------------------------------------------------------------------
-  
-  class CanvasController {
-    constructor(canvas, theme) {
-      this.canvas = canvas;
-      this.ctx = canvas.getContext('2d');
-      this.theme = theme || diagrams.theme.createDefault();
 
-      this.dragThreshold = 4;
-      this.hoverThreshold = 4;
-      this.hoverTimeout = 500; // milliseconds
-      this.mouse = { x: 0, y: 0 };
-      this.dragOffset = { x: 0, y: 0 };
-      this.translation = { x: 0, y: 0 };
-      this.scale = { x: 1.0, y: 1.0 };
-      this.transform = [1, 0, 0, 1, 0, 0];
-      this.inverseTransform = [1, 0, 0, 1, 0, 0];
-    }
-    configure(layers) {
-      layers = layers.slice(0);
-      this.layers = layers;
-      const length = layers.length;
-      for (let i = 0; i < length; i++) {
-        const layer = layers[i];
-        if (layer.initialize)
-          layer.initialize(this, i);
-      }
-      // Layers are presented in draw order, but most loops are hit test order, so
-      // reverse the array here.
-      layers.reverse();
-    }
+  class CanvasController {
+
     setTransform(translation, scale) {
       let tx = 0, ty = 0, sx = 1, sy = 1, sin = 0, cos = 1;
       if (translation) {
@@ -468,6 +441,7 @@ const diagrams = (function() {
       return geometry.matMulPtNew(p, this.inverseTransform);
     }
     onPointerDown(e) {
+      e.preventDefault();
       let self = this, mouse = this.mouse = this.click = this.getPointerPosition(e), alt = (e.button !== 0);
       this.layers.some(function (layer) {
         if (!layer.onClick || !layer.onClick(mouse, alt))
@@ -482,6 +456,7 @@ const diagrams = (function() {
       return this.clickOwner;
     }
     onPointerMove(e) {
+      e.preventDefault();
       let mouse = this.mouse = this.getPointerPosition(e), click = this.click;
       if (this.clickOwner) {
         let dx = mouse.x - click.x, dy = mouse.y - click.y;
@@ -503,6 +478,7 @@ const diagrams = (function() {
       return this.clickOwner;
     }
     onPointerUp(e) {
+      e.preventDefault();
       let mouse = this.mouse = this.getPointerPosition(e);
       if (this.isDragging) {
         this.isDragging = false;
@@ -615,10 +591,46 @@ const diagrams = (function() {
       let rect = this.canvas.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
+
+    constructor(canvas, theme) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.theme = theme || diagrams.theme.createDefault();
+
+      this.dragThreshold = 4;
+      this.hoverThreshold = 4;
+      this.hoverTimeout = 500; // milliseconds
+      this.mouse = { x: 0, y: 0 };
+      this.dragOffset = { x: 0, y: 0 };
+      this.translation = { x: 0, y: 0 };
+      this.scale = { x: 1.0, y: 1.0 };
+      this.transform = [1, 0, 0, 1, 0, 0];
+      this.inverseTransform = [1, 0, 0, 1, 0, 0];
+
+      const self = this;
+      canvas.addEventListener('pointerdown', e => self.onPointerDown(e));
+      canvas.addEventListener('pointermove', e => self.onPointerMove(e));
+      canvas.addEventListener('pointerup', e => self.onPointerUp(e));
+
+      canvas.addEventListener('dblclick', e=> self.onDoubleClick(e));
+    }
+    configure(layers) {
+      layers = layers.slice(0);
+      this.layers = layers;
+      const length = layers.length;
+      for (let i = 0; i < length; i++) {
+        const layer = layers[i];
+        if (layer.initialize)
+          layer.initialize(this, i);
+      }
+      // Layers are presented in draw order, but most loops are hit test order, so
+      // reverse the array here.
+      layers.reverse();
+    }
   }
 
   //------------------------------------------------------------------------------
-  
+
   class CanvasPanZoomLayer {
     constructor(canZoom) {
       this.pan = { x: 0, y: 0 };
@@ -671,7 +683,7 @@ const diagrams = (function() {
   }
 
   //------------------------------------------------------------------------------
-    
+
   let theme = (function() {
     function createDefault() {
       return {
@@ -684,12 +696,12 @@ const diagrams = (function() {
         dimColor: '#e0e0e0',
         hoverColor: '#FCF0AD',
         hoverTextColor: '#404040',
-  
+
         font: '14px monospace',
         fontSize: 14,
       }
     }
-  
+
     function createBlueprint() {
       return {
         bgColor: '#6666cc',
@@ -701,20 +713,20 @@ const diagrams = (function() {
         dimColor: '#808080',
         hoverColor: '#FCF0AD',
         hoverTextColor: '#404040',
-  
+
         font: '14px monospace',
         fontSize: 14,
       }
     }
-  
+
     return {
       createDefault: createDefault,
       createBlueprint: createBlueprint,
     }
   })();
-  
+
   //------------------------------------------------------------------------------
-  
+
   return {
     roundRectPath: roundRectPath,
     rectParamToPoint: rectParamToPoint,
@@ -739,13 +751,12 @@ const diagrams = (function() {
     getCanvasSize: getCanvasSize,
     setCanvasSize: setCanvasSize,
     measureNameValuePairs: measureNameValuePairs,
-  
+
     CanvasController: CanvasController,
     CanvasPanZoomLayer: CanvasPanZoomLayer,
     PropertyGridController: PropertyGridController,
-  
+
     theme: theme,
   }
-  
+
   })();
-  
