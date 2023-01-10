@@ -446,12 +446,12 @@ const diagrams = (function() {
       return { x: otherRect.left - rect.left, y: otherRect.top - rect.top };
     }
     viewToOtherCanvasView(canvasController, p) {
-      const cp = canvasController.viewToCanvas(p);
-      if (canvasController == this) {
-        return cp;
+      if (canvasController === this) {
+        return this.viewToCanvas(p);
       } else {
         const offset = this.offsetToOtherCanvas(canvasController);
-        return { x: cp.x + offset.x, y: cp.y + offset.y };
+        p = { x: p.x + offset.x, y: p.y + offset.y }
+        return canvasController.viewToCanvas(p);
       }
     }
     draw() {
