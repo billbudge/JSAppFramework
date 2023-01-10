@@ -440,11 +440,46 @@ const diagrams = (function() {
     viewToCanvas(p) {
       return geometry.matMulPtNew(p, this.inverseTransform);
     }
+    offsetToOtherCanvas(canvasController) {
+      const rect = this.getClientRect(),
+            otherRect = canvasController.getClientRect();
+      return { x: otherRect.left - rect.left, y: otherRect.top - rect.top };
+    }
+    viewToOtherCanvasView(canvasController, p) {
+      const cp = canvasController.viewToCanvas(p);
+      if (canvasController == this) {
+        return cp;
+      } else {
+        const offset = this.offsetToOtherCanvas(canvasController);
+        return { x: cp.x + offset.x, y: cp.y + offset.y };
+      }
+    }
+    draw() {
+      const self = this, canvas = this.canvas, ctx = this.ctx, layers = this.layers, length = layers.length, t = this.transform_;
+      function draw() {
+        const size = self.getSize(canvas, ctx);
+        ctx.clearRect(0, 0, size.width, size.height);
+        ctx.strokeStyle = self.theme.strokeColor;
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(0, 0, size.width, size.height);
+        ctx.setLineDash([]);
+        for (let i = length - 1; i >= 0; i--) {
+          let layer = layers[i];
+          if (layer.draw)
+            layer.draw(self);
+        }
+      }
+      window.requestAnimationFrame(draw);
+    }
     onPointerDown(e) {
       e.preventDefault();
-      let self = this, mouse = this.mouse = this.click = this.getPointerPosition(e), alt = (e.button !== 0);
+      const self = this,
+            alt = (e.button !== 0);
+      this.mouse = this.click = this.getPointerPosition(e);
+      // Call layers until one returns true.
       this.layers.some(function (layer) {
-        if (!layer.onClick || !layer.onClick(mouse, alt))
+        if (!layer.onClick || !layer.onClick(self, alt))
           return false;
         // Layers that return true from onClick must implement onBeginDrag, etc.
         self.clickOwner = layer;
@@ -465,11 +500,11 @@ const diagrams = (function() {
             Math.abs(dy) >= this.dragThreshold;
           if (this.isDragging) {
             this.cancelHover_();
-            this.clickOwner.onBeginDrag(click);
+            this.clickOwner.onBeginDrag(this);
           }
         }
         if (this.isDragging) {
-          this.clickOwner.onDrag(click, mouse);
+          this.clickOwner.onDrag(this);
           this.draw();
         }
       }
@@ -479,23 +514,23 @@ const diagrams = (function() {
     }
     onPointerUp(e) {
       e.preventDefault();
-      let mouse = this.mouse = this.getPointerPosition(e);
+      this.mouse = this.getPointerPosition(e);
       if (this.isDragging) {
         this.isDragging = false;
-        this.clickOwner.onEndDrag(mouse);
+        this.clickOwner.onEndDrag(this);
         this.draw();
       }
       this.click = null;
       this.clickOwner = null;
       return false;
     }
-    onPointerOut(e) {
-      // TODO
-    }
     onDoubleClick(e) {
-      let self = this, mouse = this.mouse = this.click = this.getPointerPosition(e), alt = (e.button !== 0), handler;
+      const self = this;
+      this.mouse = this.click = this.getPointerPosition(e);
+      let handler;
+      // Call layers until one returns true.
       this.layers.some(function (layer) {
-        if (!layer.onDoubleClick || !layer.onDoubleClick(mouse, alt))
+        if (!layer.onDoubleClick || !layer.onDoubleClick(self, alt))
           return false;
         handler = layer;
         return true;
@@ -503,6 +538,33 @@ const diagrams = (function() {
       this.cancelHover_();
       this.draw();
       return handler;
+    }
+    startHover_() {
+      let self = this;
+      if (this.hovering_)
+        this.cancelHover_();
+      this.hovering_ = window.setTimeout(function () {
+        self.layers.some(function (layer) {
+          if (!layer.onBeginHover || !layer.onBeginHover(self))
+            return false;
+          // Layers that return true from onBeginHover must implement onEndHover.
+          self.hoverOwner = layer;
+          self.hovering_ = 0;
+          self.draw();
+          return true;
+        });
+      }, this.hoverTimeout);
+    }
+    cancelHover_() {
+      if (this.hovering_) {
+        window.clearTimeout(this.hovering_);
+        this.hovering_ = 0;
+      }
+      if (this.hoverOwner) {
+        this.hoverOwner.onEndHover(this);
+        this.hoverOwner = null;
+        this.draw();
+      }
     }
     onKeyDown(e) {
       let self = this;
@@ -532,50 +594,11 @@ const diagrams = (function() {
         return false;
       }
     }
-    startHover_() {
-      let self = this;
-      if (this.hovering_)
-        this.cancelHover_();
-      this.hovering_ = window.setTimeout(function () {
-        self.layers.some(function (layer) {
-          if (!layer.onBeginHover || !layer.onBeginHover(self.mouse))
-            return false;
-          // Layers that return true from onBeginHover must implement onEndHover.
-          self.hoverOwner = layer;
-          self.hovering_ = 0;
-          self.draw();
-          return true;
-        });
-      }, this.hoverTimeout);
+    getCanvas() {
+      return this.canvas;
     }
-    cancelHover_() {
-      if (this.hovering_) {
-        window.clearTimeout(this.hovering_);
-        this.hovering_ = 0;
-      }
-      if (this.hoverOwner) {
-        this.hoverOwner.onEndHover(this.mouse);
-        this.hoverOwner = null;
-        this.draw();
-      }
-    }
-    draw() {
-      const self = this, canvas = this.canvas, ctx = this.ctx, layers = this.layers, length = layers.length, t = this.transform_;
-      function draw() {
-        const size = self.getSize(canvas, ctx);
-        ctx.clearRect(0, 0, size.width, size.height);
-        ctx.strokeStyle = self.theme.strokeColor;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([6, 3]);
-        ctx.strokeRect(0, 0, size.width, size.height);
-        ctx.setLineDash([]);
-        for (let i = length - 1; i >= 0; i--) {
-          let layer = layers[i];
-          if (layer.draw)
-            layer.draw();
-        }
-      }
-      window.requestAnimationFrame(draw);
+    getCtx() {
+      return this.ctx;
     }
     getSize() {
       return getCanvasSize(this.canvas, this.ctx);
@@ -590,6 +613,12 @@ const diagrams = (function() {
     getPointerPosition(e) {
       let rect = this.canvas.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    getCurrentPointerPosition() {
+      return this.mouse;  // TODO rename mouse to pointer
+    }
+    getInitialPointerPosition() {
+      return this.click;
     }
 
     constructor(canvas, theme) {
