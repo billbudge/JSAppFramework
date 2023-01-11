@@ -508,7 +508,7 @@ const diagrams = (function() {
           this.draw();
         }
       }
-      if (!click)
+      if (!this.isDragging)
         this.startHover_();
       return this.clickOwner;
     }
