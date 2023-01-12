@@ -294,14 +294,7 @@ const diagrams = (function() {
   }
 
   function getCanvasScaleFactor(ctx) {
-    const devicePixelRatio = window.devicePixelRatio || 1,
-          backingStoreRatio = ctx.webkitBackingStorePixelRatio ||
-                              ctx.mozBackingStorePixelRatio ||
-                              ctx.msBackingStorePixelRatio ||
-                              ctx.oBackingStorePixelRatio ||
-                              ctx.backingStorePixelRatio || 1;
-
-        return devicePixelRatio / backingStoreRatio;
+    return window.devicePixelRatio;
   }
 
   function getCanvasSize(canvas, ctx) {
@@ -604,7 +597,13 @@ const diagrams = (function() {
       return getCanvasSize(this.canvas, this.ctx);
     }
     setSize(width, height) {
+      this.width = width;
+      this.height = height;
       diagrams.setCanvasSize(this.canvas, this.ctx, width, height);
+      this.draw();
+    }
+    onWindowResize() {
+      diagrams.setCanvasSize(this.canvas, this.ctx, this.width, this.height);
       this.draw();
     }
     getClientRect() {
