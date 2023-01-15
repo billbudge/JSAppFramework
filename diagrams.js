@@ -712,6 +712,52 @@ const diagrams = (function() {
 
   //------------------------------------------------------------------------------
 
+  class FileController {
+    constructor(types, excludeAcceptAllOption) {
+      this.types = types ||
+        [
+          {
+            description: 'Text file',
+            accept: {'text/plain': ['.txt']},
+            },
+        ];
+      this.excludeAcceptAllOption = excludeAcceptAllOption;
+    }
+    async getWriteFileHandle(suggestedName) {
+      const opts = {
+        types: this.types,
+        excludeAcceptAllOption: this.excludeAcceptAllOption,
+        suggestedName: suggestedName,
+      }
+      return await window.showSaveFilePicker(opts);
+    }
+    async saveFile(fileHandle, contents) {
+      const writable = await fileHandle.createWritable();
+      await writable.write(contents);
+      await writable.close();
+    }
+    async saveUnnamedFile(contents, suggestedName) {
+      const fileHandle = await this.getWriteFileHandle(suggestedName);
+      await this.saveFile(fileHandle, contents);
+    }
+    async getReadFileHandle() {
+      const opts = {
+        types: this.types,
+        excludeAcceptAllOption: this.excludeAcceptAllOption,
+        multiple: false,
+      }
+      const [fileHandle] = await window.showOpenFilePicker(opts);
+      return fileHandle;
+    }
+    async openFile() {
+      const fileHandle = await this.getReadFileHandle();
+      const fileData = await fileHandle.getFile();
+      return await fileData.text();
+    }
+  }
+
+  //------------------------------------------------------------------------------
+
   let theme = (function() {
     function createDefault() {
       return {
@@ -756,35 +802,37 @@ const diagrams = (function() {
   //------------------------------------------------------------------------------
 
   return {
-    roundRectPath: roundRectPath,
-    rectParamToPoint: rectParamToPoint,
-    circleParamToPoint: circleParamToPoint,
-    roundRectParamToPoint: roundRectParamToPoint,
-    circlePointToParam: circlePointToParam,
-    rectPointToParam: rectPointToParam,
-    diskPath: diskPath,
-    getEdgeBezier: getEdgeBezier,
-    arrowPath: arrowPath,
-    lineEdgePath: lineEdgePath,
-    bezierEdgePath: bezierEdgePath,
-    inFlagPath: inFlagPath,
-    outFlagPath: outFlagPath,
-    closedPath: closedPath,
-    hitPoint: hitPoint,
-    hitTestRect: hitTestRect,
-    hitTestDisk: hitTestDisk,
-    hitTestLine: hitTestLine,
-    hitTestBezier: hitTestBezier,
-    hitTestConvexHull: hitTestConvexHull,
-    getCanvasSize: getCanvasSize,
-    setCanvasSize: setCanvasSize,
-    measureNameValuePairs: measureNameValuePairs,
+    roundRectPath,
+    rectParamToPoint,
+    circleParamToPoint,
+    roundRectParamToPoint,
+    circlePointToParam,
+    rectPointToParam,
+    diskPath,
+    getEdgeBezier,
+    arrowPath,
+    lineEdgePath,
+    bezierEdgePath,
+    inFlagPath,
+    outFlagPath,
+    closedPath,
+    hitPoint,
+    hitTestRect,
+    hitTestDisk,
+    hitTestLine,
+    hitTestBezier,
+    hitTestConvexHull,
+    getCanvasSize,
+    setCanvasSize,
+    measureNameValuePairs,
 
-    CanvasController: CanvasController,
-    CanvasPanZoomLayer: CanvasPanZoomLayer,
-    PropertyGridController: PropertyGridController,
+    CanvasController,
+    CanvasPanZoomLayer,
+    PropertyGridController,
 
-    theme: theme,
+    FileController,
+
+    theme,
   }
 
   })();
