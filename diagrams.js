@@ -470,6 +470,8 @@ const diagrams = (function() {
       const self = this,
             alt = (e.button !== 0);
       this.mouse = this.click = this.getPointerPosition(e);
+      this.shiftKeyDown = e.shiftKey;
+      this.cmdKeyDown = e.ctrlKey || e.metaKey;
       // Call layers until one returns true.
       this.layers.some(function (layer) {
         if (!layer.onClick || !layer.onClick(self, alt))
