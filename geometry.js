@@ -73,7 +73,8 @@ const geometry = (function() {
     }
 
     function projectPointToSegment(p1, p2, p) {
-      const projection = projectPointToLine(p1, p2, p);
+      const projection = projectPointToLine(p1, p2, p),
+            t = projection.t;
       if (t <= 0) {
         return { x: p1.x, y: p1.y, t: 0 };
       }
@@ -214,25 +215,24 @@ const geometry = (function() {
       return curves;
     }
 
-    function hitTestCurveSegment(p1, p2, p3, p4, p, tolerance) {
+    function hitTestBezier(p1, p2, p3, p4, p, tolerance) {
       const beziers = new diagrammar.collections.LinkedList();
       beziers.pushFront([p1, p2, p3, p4, 0, 1]);
       let dMin = Number.MAX_VALUE,
           closestX, closestY, tMin;
       while (beziers.length > 0) {
-        var b = beziers.popBack().value,
-            b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3], t0 = b[4], t1 = b[5];
+        const b = beziers.popBack().value,
+              b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3], t0 = b[4], t1 = b[5];
         // Get control point distances from the segment defined by the curve endpoints.
-        var d1 = pointToLineDist(b0, b3, b1);
-        var d2 = pointToLineDist(b0, b3, b2);
-        var curvature = Math.max(d1, d2);
+        const d1 = pointToLineDist(b0, b3, b1),
+              d2 = pointToLineDist(b0, b3, b2),
+              curvature = Math.max(d1, d2);
         // Get p distance from the segment.
-        var t = projectPointToLine(b0, b3, p);
-        t = Math.min(1, Math.max(0, t));
-        var projX = b0.x + t * (b3.x - b0.x),
-            projY = b0.y + t * (b3.y - b0.y);
-        var dx = p.x - projX, dy = p.y - projY;
-        var d = Math.sqrt(dx * dx + dy * dy);
+        const t = projectPointToSegment(b0, b3, p).t,
+              projX = b0.x + t * (b3.x - b0.x),
+              projY = b0.y + t * (b3.y - b0.y),
+              dx = p.x - projX, dy = p.y - projY,
+              d = Math.sqrt(dx * dx + dy * dy);
         if (d - curvature > tolerance)
           continue;
         if (curvature <= tolerance) {
@@ -265,12 +265,10 @@ const geometry = (function() {
 
     // Cosine of angle between x-axis (1, 0) and (dx, dy).
     function getCos(dx, dy) {
-      var cos;
-      if (dx == 0 && dy == 0)
-        cos = 1;  // Point is p0 or identical to p0.
-      else
-        cos = dx / Math.sqrt(dx * dx + dy * dy);
-      return cos;
+      // Point is the origin.
+      if (dx === 0 && dy === 0)
+        return 1;
+      return dx / Math.sqrt(dx * dx + dy * dy);
     }
 
     // Compares cosines, works over [0, pi].
@@ -285,9 +283,9 @@ const geometry = (function() {
     // Returns index of array containing value if found, otherwise, index of
     // position where value would be if added.
     function binarySearch(items, value, cmpFn) {
-      var left = 0, right = items.length;
+      let left = 0, right = items.length;
       while (left < right - 1) {
-        var mid = (right - left) / 2 + left | 0;
+        const mid = (right - left) / 2 + left | 0;
         if (cmpFn(value, items[mid]) < 0) {
           right = mid;
         } else {
@@ -298,44 +296,43 @@ const geometry = (function() {
     }
 
     // Calculate turn direction of p1-p2 to p2-p3.
-    // -1 == left, 1 = right, 0 = collinear.
+    // -1 == left, 1 = right, 0 = colinear.
     function turnDirection(p1, p2, p3) {
-      var crossZ = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
-      return crossZ;
+      // cross product.
+      return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
     }
 
     // Gets the convex hull using Graham scan.
     function getConvexHull(points) {
-      var p0 = points[0],
+      let p0 = points[0],
           maxY = p0.y,
-          length = points.length,
-          i, pi;
-      for (i = 0; i < length; i++) {
-        pi = points[i];
+          length = points.length;
+      for (let i = 0; i < length; i++) {
+        let pi = points[i];
         if (pi.y > maxY) {
           maxY = pi.y;
           p0 = pi;
         }
       }
-      for (i = 0; i < length; i++) {
-        pi = points[i];
+      for (let i = 0; i < length; i++) {
+        let pi = points[i];
         // Cos of angle between x-axis (1, 0) and pi - p0.
         pi.cos = getCos(pi.x - p0.x, pi.y - p0.y);
       }
       points.sort(compareCosines);
-      var startIndex = binarySearch(points, p0, compareCosines),
-          hull = [],
-          i = 2;
+      let startIndex = binarySearch(points, p0, compareCosines),
+          hull = [];
+      let i = 2;
       hull.push(points[0]);
       hull.push(points[1]);
       while (i < length) {
-        var p3 = points[i];
+        const p3 = points[i];
         while (hull.length > 1) {
-          var p1 = hull[hull.length - 2];
-          var p2 = hull[hull.length - 1];
+          const p1 = hull[hull.length - 2],
+                p2 = hull[hull.length - 1];
           if (turnDirection(p1, p2, p3) < -0.000001)  // TODO define EPS
             break;
-          // right turn or collinear
+          // right turn or colinear
           hull.pop();
         }
         hull.push(p3);
@@ -345,11 +342,11 @@ const geometry = (function() {
     }
 
     function getExtents(points) {
-      var length = points.length,
-          p0 = points[0],
-          xmin = p0.x, ymin = p0.y, xmax = p0.x, ymax = p0.y;
-      for (var i = 0; i < length; i++) {
-        var pi = points[i];
+      const length = points.length,
+            p0 = points[0];
+      let xmin = p0.x, ymin = p0.y, xmax = p0.x, ymax = p0.y;
+      for (let i = 0; i < length; i++) {
+        const pi = points[i];
         xmin = Math.min(xmin, pi.x);
         ymin = Math.min(ymin, pi.y);
         xmax = Math.max(xmax, pi.x);
@@ -359,9 +356,10 @@ const geometry = (function() {
     }
 
     function getCentroid(points) {
-      var cx = 0, cy = 0, length = points.length;
-      for (var i = 0; i < length; i++) {
-        var pi = points[i];
+      const length = points.length;
+      let cx = 0, cy = 0;
+      for (let i = 0; i < length; i++) {
+        const pi = points[i];
         cx += pi.x; cy += pi.y;
       }
       return { x: cx / length, y: cy / length };
@@ -535,7 +533,7 @@ const geometry = (function() {
       makeInterpolatingBezier: makeInterpolatingBezier,
       evaluateBezier: evaluateBezier,
       generateInterpolatingBeziers: generateInterpolatingBeziers,
-      hitTestCurveSegment: hitTestCurveSegment,
+      hitTestBezier: hitTestBezier,
       getCos: getCos,
       compareCosines: compareCosines,
       binarySearch: binarySearch,
@@ -553,7 +551,7 @@ const geometry = (function() {
     };
   })();
 
-
+/*
   function parameterizePath(path) {
     var length = path.length;
     var i0 = length - 1;
@@ -596,10 +594,10 @@ const geometry = (function() {
   function projectToPath(path, segment, p) {
     var p0 = path[segment];
     var p1 = path[segment != path.length - 1 ? segment + 1 : 0];
-    var t = geometry.projectPointToSegment(p0, p1, p);
+    var projection = geometry.projectPointToSegment(p0, p1, p),
+        t = projection.t;
     return { x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t };
   }
-
 
   // // Gets the convex hull using Graham scan, modified to sort by angle about
   // // the centroid.
@@ -814,3 +812,4 @@ const geometry = (function() {
     // }
     // return { x: cx / points.length, y: cy / points.length };
 
+*/

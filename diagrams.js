@@ -277,7 +277,7 @@ const diagrams = (function() {
     } else if (geometry.pointToPointDist(p2, p) < tol) {
       return { p2: true, t: 1 };
     } else {
-      const hit = geometry.hitTestCurveSegment(bezier[0], bezier[1], bezier[2], bezier[3], p, tol);
+      const hit = geometry.hitTestBezier(bezier[0], bezier[1], bezier[2], bezier[3], p, tol);
       if (hit) {
         hit.edge = true;
       }
