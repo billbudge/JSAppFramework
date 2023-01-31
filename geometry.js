@@ -3,7 +3,7 @@ const geometry = (function() {
   'use strict';
 
     function lineLength(x1, y1, x2, y2) {
-      var dx = x2 - x1, dy = y2 - y1;
+      const dx = x2 - x1, dy = y2 - y1;
       return Math.sqrt(dx * dx + dy * dy);
     }
 
@@ -12,11 +12,11 @@ const geometry = (function() {
     }
 
     function vecNormalize(v) {
-      var length = vecLength(v);
+      const length = vecLength(v);
       if (length) {
-        var ooLength = 1.0 / length;
-        v.x *= ooLength;
-        v.y *= ooLength;
+        const scale = 1.0 / length;
+        v.x *= scale;
+        v.y *= scale;
       }
     }
 
@@ -31,7 +31,7 @@ const geometry = (function() {
     }
 
     function matMulVec(v, m) {
-      var x = v.x, y = v.y;
+      const x = v.x, y = v.y;
       v.x = x * m[0] + y * m[2];
       v.y = x * m[1] + y * m[3];
       return v;
@@ -42,7 +42,7 @@ const geometry = (function() {
     }
 
     function matMulPt(v, m) {
-      var x = v.x, y = v.y;
+      const x = v.x, y = v.y;
       v.x = x * m[0] + y * m[2] + m[4];
       v.y = x * m[1] + y * m[3] + m[5];
       return v;
@@ -53,34 +53,44 @@ const geometry = (function() {
     }
 
     function pointToPointDist(p1, p2) {
-      var dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
       return Math.sqrt(dx * dx + dy * dy);
     }
 
     function projectPointToLine(p1, p2, p) {
-      var p1p2x = p2.x - p1.x;
-      var p1p2y = p2.y - p1.y;
-      var p1px = p.x - p1.x;
-      var p1py = p.y - p1.y;
-      var p1p2Squared = p1p2x * p1p2x + p1p2y * p1p2y;
-      // For a degenerate line, t = 0.
-      if (p1p2Squared == 0)
-        return 0;
-      var p1pDotp1p2 = p1px * p1p2x + p1py * p1p2y;
-      var t = p1pDotp1p2 / p1p2Squared;
-      return t;
+      const p1p2x = p2.x - p1.x,
+            p1p2y = p2.y - p1.y,
+            p1px = p.x - p1.x,
+            p1py = p.y - p1.y,
+            p1p2Squared = p1p2x * p1p2x + p1p2y * p1p2y;
+      if (p1p2Squared == 0) {
+        // Degenerate line, choose p1.
+        return  { x: p1.x, y: p1.y, t: 0 };
+      }
+      const p1pDotp1p2 = p1px * p1p2x + p1py * p1p2y,
+            t = p1pDotp1p2 / p1p2Squared;
+      return { x: p1.x + t * (p2.x - p1.x), y: p1.y + (p2.y - p1.y) * t, t: t };
     }
 
     function projectPointToSegment(p1, p2, p) {
-      var t = projectPointToLine(p1, p2, p);
-      t = Math.min(1, Math.max(0, t));
-      return t;
+      const projection = projectPointToLine(p1, p2, p);
+      if (t <= 0) {
+        return { x: p1.x, y: p1.y, t: 0 };
+      }
+      if (t >= 1) {
+        return { x: p2.x, y: p2.y, t: 1 };
+      }
+      return projection;
     }
 
     function projectPointToCircle(p, center, radius) {
       const dx = p.x - center.x,
-            dy = p.y - center.y,
-            scale = 1 / Math.sqrt(dx * dx + dy * dy),
+            dy = p.y - center.y;
+      if  (dx === 0 && dy === 0) {
+        // Point is center, arbitrarily project to the rightmost point of the circle.
+        return { x: center.x, y: center.y, nx: 1, ny: 0, scale: 1 }
+      }
+      const scale = 1 / Math.sqrt(dx * dx + dy * dy),
             nx = dx * scale,
             ny = dy * scale,
             x = center.x + nx * radius,
@@ -92,18 +102,14 @@ const geometry = (function() {
 
     // Distance to infinite line through p1, p2.
     function pointToLineDist(p1, p2, p) {
-      var t = projectPointToLine(p1, p2, p);
-      var lx = p1.x + t * (p2.x - p1.x), ly = p1.y + t * (p2.y - p1.y);
-      var dx = p.x - lx, dy = p.y - ly;
-      return Math.sqrt(dx * dx + dy * dy);
+      const projection = projectPointToLine(p1, p2, p);
+      return pointToPointDist(projection, p);
     }
 
     // Distance to line segment between p1, p2.
     function pointToSegmentDist(p1, p2, p) {
-      var t = projectPointToSegment(p1, p2, p);
-      var lx = p1.x + t * (p2.x - p1.x), ly = p1.y + t * (p2.y - p1.y);
-      var dx = p.x - lx, dy = p.y - ly;
-      return Math.sqrt(dx * dx + dy * dy);
+      const projection = projectPointToLine(p1, p2, p);
+      return pointToPointDist(projection, p);
     }
 
     function pointOnSegment(p1, p2, p, tolerance) {
@@ -112,14 +118,14 @@ const geometry = (function() {
 
     function lineIntersection(p0, p1, p2, p3)
     {
-      var p0x = p0.x, p0y = p0.y, p1x = p1.x, p1y = p1.y,
-          p2x = p2.x, p2y = p2.y, p3x = p3.x, p3y = p3.y,
-          s1x = p1x - p0x, s1y = p1y - p0y, s2x = p3x - p2x, s2y = p3y - p2y,
-          d = (-s2x * s1y + s1x * s2y);
+      const p0x = p0.x, p0y = p0.y, p1x = p1.x, p1y = p1.y,
+            p2x = p2.x, p2y = p2.y, p3x = p3.x, p3y = p3.y,
+            s1x = p1x - p0x, s1y = p1y - p0y, s2x = p3x - p2x, s2y = p3y - p2y,
+            d = (-s2x * s1y + s1x * s2y);
       if (Math.abs(d) > 0.000001) {
-        var s = (-s1y * (p0x - p2x) + s1x * (p0y - p2y)) / d,
-            t = (s2x * (p0y - p2y) - s2y * (p0x - p2x)) / d;
-        return { s: s, t: t, x: p0x + t * s1x, y: p0y + t * s1y };
+        const s = (-s1y * (p0x - p2x) + s1x * (p0y - p2y)) / d,
+              t = (s2x * (p0y - p2y) - s2y * (p0x - p2x)) / d;
+        return { x: p0x + t * s1x, y: p0y + t * s1y, s: s, t: t };
       }
       // Parallel or coincident.
     }
