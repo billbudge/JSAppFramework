@@ -561,7 +561,11 @@ const diagrams = (function() {
       }
     }
     onKeyDown(e) {
-      let self = this;
+      // Don't route key events to canvas layers if there is a focused control.
+      if (document.activeElement !== document.body)
+        return false;
+
+        let self = this;
       this.shiftKeyDown = e.shiftKey;
       this.cmdKeyDown = e.ctrlKey || e.metaKey;
       this.layers.some(function (layer) {
