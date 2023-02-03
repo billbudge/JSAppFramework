@@ -337,10 +337,12 @@ const diagrams = (function() {
       this.active = undefined;
     }
     register(type, properties) {
-      const self = this, table = document.createElement('table'), info = {
-        properties: properties,
-        table: table,
-      };
+      const self = this,
+            table = document.createElement('table'),
+            info = {
+              properties: properties,
+              table: table,
+            };
       // TODO better styling
       table.style = 'position:fixed; table-layout: fixed; top:300px; left: 0;   padding: 0; margin: 0;';
       'border-collapse: collapse; margin: 25px 0; font-size: 0.9em; font-family: sans-serif; ';
@@ -534,7 +536,6 @@ const diagrams = (function() {
       canvas.style.left = newX + "px";
       canvas.style.top = newY + "px";
       const rect = this.canvas.getBoundingClientRect();
-      console.log(rect);
     }
     onBeginDrag() {
       const rect = this.canvas.getBoundingClientRect();
