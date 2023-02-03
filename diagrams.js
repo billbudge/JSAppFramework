@@ -292,6 +292,8 @@ const diagrams = (function() {
     }
   }
 
+  //------------------------------------------------------------------------------
+
   function getCanvasScaleFactor(ctx) {
     return window.devicePixelRatio;
   }
@@ -438,6 +440,7 @@ const diagrams = (function() {
       return { x: otherRect.left - rect.left, y: otherRect.top - rect.top };
     }
     viewToOtherCanvasView(canvasController, p) {
+      // TODO this can be simplified to have a single return.
       if (canvasController === this) {
         return this.viewToCanvas(p);
       } else {
@@ -451,11 +454,6 @@ const diagrams = (function() {
       function draw() {
         const size = self.getSize(canvas, ctx);
         ctx.clearRect(0, 0, size.width, size.height);
-        ctx.strokeStyle = self.theme.strokeColor;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([6, 3]);
-        ctx.strokeRect(0, 0, size.width, size.height);
-        ctx.setLineDash([]);
         for (let i = length - 1; i >= 0; i--) {
           let layer = layers[i];
           if (layer.draw)
@@ -466,9 +464,11 @@ const diagrams = (function() {
     }
     onPointerDown(e) {
       e.preventDefault();
+      this.initialClientX = e.clientX;
+      this.initialClientY = e.clientY;
       const self = this,
             alt = (e.button !== 0);
-      this.mouse = this.click = this.getPointerPosition(e);
+      this.pointer = this.click = this.getPointerPosition(e);
       this.shiftKeyDown = e.shiftKey;
       this.cmdKeyDown = e.ctrlKey || e.metaKey;
       // Call layers until one returns true.
@@ -477,18 +477,25 @@ const diagrams = (function() {
           return false;
         // Layers that return true from onClick must implement onBeginDrag, etc.
         self.clickOwner = layer;
-        self.canvas.setPointerCapture(e.pointerId);
         return true;
       });
+      if (!this.clickOwner && this.draggable) {
+        this.clickOwner = this;
+      }
+      if (this.clickOwner) {
+        this.canvas.setPointerCapture(e.pointerId);
+      }
       this.cancelHover_();
       this.draw();
       return this.clickOwner;
     }
     onPointerMove(e) {
       e.preventDefault();
-      let mouse = this.mouse = this.getPointerPosition(e), click = this.click;
+      this.clientX = e.clientX;
+      this.clientY = e.clientY;
+      let pointer = this.pointer = this.getPointerPosition(e), click = this.click;
       if (this.clickOwner) {
-        let dx = mouse.x - click.x, dy = mouse.y - click.y;
+        let dx = pointer.x - click.x, dy = pointer.y - click.y;
         if (!this.isDragging) {
           this.isDragging = Math.abs(dx) >= this.dragThreshold ||
             Math.abs(dy) >= this.dragThreshold;
@@ -508,7 +515,7 @@ const diagrams = (function() {
     }
     onPointerUp(e) {
       e.preventDefault();
-      this.mouse = this.getPointerPosition(e);
+      this.pointer = this.getPointerPosition(e);
       if (this.isDragging) {
         this.isDragging = false;
         this.clickOwner.onEndDrag(this);
@@ -518,9 +525,31 @@ const diagrams = (function() {
       this.clickOwner = null;
       return false;
     }
+    // A draggable canvas sets itself as the click owner, so must implement
+    // onBeginDrag, onDrag, and onEndDrag.
+    moveCanvas() {
+      const canvas = this.canvas,
+            newX = this.canvasX + (this.clientX - this.initialClientX),
+            newY = this.canvasY + (this.clientY - this.initialClientY);
+      canvas.style.left = newX + "px";
+      canvas.style.top = newY + "px";
+      const rect = this.canvas.getBoundingClientRect();
+      console.log(rect);
+    }
+    onBeginDrag() {
+      const rect = this.canvas.getBoundingClientRect();
+      this.canvasX = rect.x;
+      this.canvasY = rect.y;
+      this.moveCanvas();
+    }
+    onDrag() {
+      this.moveCanvas();
+    }
+    onEndDrag() {
+    }
     onDoubleClick(e) {
       const self = this;
-      this.mouse = this.click = this.getPointerPosition(e);
+      this.pointer = this.click = this.getPointerPosition(e);
       let handler;
       // Call layers until one returns true.
       this.layers.some(function (layer) {
@@ -615,11 +644,11 @@ const diagrams = (function() {
       return this.canvas.getBoundingClientRect();
     }
     getPointerPosition(e) {
-      let rect = this.canvas.getBoundingClientRect();
+      const rect = this.canvas.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
     getCurrentPointerPosition() {
-      return this.mouse;  // TODO rename mouse to pointer
+      return this.pointer;
     }
     getInitialPointerPosition() {
       return this.click;
@@ -633,7 +662,7 @@ const diagrams = (function() {
       this.dragThreshold = 4;
       this.hoverThreshold = 4;
       this.hoverTimeout = 500; // milliseconds
-      this.mouse = { x: 0, y: 0 };
+      this.pointer = { x: 0, y: 0 };
       this.dragOffset = { x: 0, y: 0 };
       this.translation = { x: 0, y: 0 };
       this.scale = { x: 1.0, y: 1.0 };
@@ -699,7 +728,7 @@ const diagrams = (function() {
       this.canvasController.setTransform(pan, { x: zoom, y: zoom });
     }
     onClick(p) {
-      // Always capture the mouse click.
+      // Always capture the pointer click.
       return true;
     }
     onBeginDrag(p0) {
