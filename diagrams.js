@@ -535,7 +535,6 @@ const diagrams = (function() {
             newY = this.canvasY + (this.clientY - this.initialClientY);
       canvas.style.left = newX + "px";
       canvas.style.top = newY + "px";
-      const rect = this.canvas.getBoundingClientRect();
     }
     onBeginDrag() {
       const rect = this.canvas.getBoundingClientRect();
